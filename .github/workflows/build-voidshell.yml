@@ -35,8 +35,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pyaxmlparser androguard requests
-
       
+      - name: Install APK signing tools (zipalign + apksigner)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y zipalign apksigner openjdk-11-jdk
       - name: Build signed APK (using your builder script)
         run: |
           # If you don't use secrets, hardcode or use defaults
