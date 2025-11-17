@@ -36,11 +36,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyaxmlparser androguard requests
 
-      - name: Obfuscate with PyArmor 7 (legacy CLI fallback)
-        run: |
-          pip install "pyarmor<8.0.0"
-          pyarmor obfuscate --output dist/obf voidshell_payload.py
-          cp dist/obf/voidshell_payload.py voidshell_payload.py
       
       - name: Build signed APK (using your builder script)
         run: |
